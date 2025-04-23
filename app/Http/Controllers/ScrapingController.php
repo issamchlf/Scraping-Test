@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use Symfony\Component\BrowserKit\HttpBrowser;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\DomCrawler\Crawler;
-use Illuminate\Http\JsonResponse;
 
 class ScrapingController extends Controller
 {
-    public function scrape(): JsonResponse
+    public function scrape()
     {
         // 1) Create HttpClient with headers if needed
         $httpClient = HttpClient::create([
@@ -29,10 +28,10 @@ class ScrapingController extends Controller
 
         // 4) Extract product titles with DomCrawler
         $titles = $crawler
-            ->filter('.thumbnail .title, h4, p.description.card-text')
+            ->filter('div.caption')
             ->each(fn(Crawler $node) => trim($node->text()));
 
-        // 5) Return JSON
-        return response()->json(['titles' => $titles]);
+        // 5) Return the view with the scraped data
+        return view('scrape', ['titles' => $titles]);
     }
 }
