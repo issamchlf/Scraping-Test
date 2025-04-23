@@ -25,11 +25,11 @@ class ScrapingController extends Controller
         $browser = new HttpBrowser($httpClient);
 
         // 3) Make the request
-        $crawler = $browser->request('GET', 'https://webscraper.io/test-sites/e-commerce/static');
+        $crawler = $browser->request('GET', 'https://webscraper.io/test-sites/e-commerce/static/product/101');
 
         // 4) Extract product titles with DomCrawler
         $titles = $crawler
-            ->filter('.thumbnail .title')
+            ->filter('.thumbnail .title, h4, p.description.card-text')
             ->each(fn(Crawler $node) => trim($node->text()));
 
         // 5) Return JSON
