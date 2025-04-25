@@ -11,7 +11,7 @@ class ScrapingController extends Controller
 {
     public function scrape()
     {
-        //  Create HttpClient with headers if needed
+        // 1) Create HttpClient with headers
         $httpClient = HttpClient::create([
             'headers' => [
                 'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' .
@@ -21,31 +21,32 @@ class ScrapingController extends Controller
             ],
         ]);
 
-        //  Instantiate HttpBrowser with the HTTP client
+        // 2) Instantiate HttpBrowser with the HTTP client
         $browser = new HttpBrowser($httpClient);
 
-        //  Make the request
-        $crawler = $browser->request('GET', 'https://webscraper.io/test-sites/e-commerce/static');
+        // 3) Make the request to the target website
+        $crawler = $browser->request('GET', 'https://www.esmadrid.com/');
 
-        // Extract product details with DomCrawler
-        $products = $crawler->filter('div.thumbnail')->each(function (Crawler $node) {
+        // 4) Extract event details with DomCrawler
+        $products = $crawler->filter('.card-event')->each(function (Crawler $node) {
             return [
-                'title'       => trim($node->filter('div.caption h4 a')->text()),
-                'description' => trim($node->filter('div.caption p')->text()),
-                'price'       => floatval(str_replace('$', '', $node->filter('h4.price')->text())),
+                'title'       => trim($node->filter('.card-title')->text()),
+                'description' => trim($node->filter('.card-text')->text()),
+                'price'       => null, // Assuming no price is available
                 'image_url'   => $node->filter('img')->attr('src'),
             ];
         });
 
+        // 5) Save products to the database
         foreach ($products as $product) {
             Product::updateOrCreate(
-                ['title' => $product['title']], 
-                $product 
+                ['title' => $product['title']], // Unique identifier
+                $product // Data to update or insert
             );
         }
 
+        // 6) Return the view with the scraped data
         $savedProducts = Product::all();
-
         return view('scrape', ['products' => $savedProducts]);
     }
 }
