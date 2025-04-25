@@ -7,4 +7,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/scrape', [ScrapingController::class, 'Scrape']);
+Route::get('/scrape', [ScrapingController::class, 'scrape']);
