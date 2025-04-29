@@ -11,7 +11,7 @@ class EsMadridScraperController extends Controller
 {
     public function scrape()
     {
-        // 1) Create HttpClient with headers
+        // Create HttpClient with headers
         $httpClient = HttpClient::create([
             'headers' => [
                 'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' .
@@ -21,27 +21,46 @@ class EsMadridScraperController extends Controller
             ],
         ]);
 
-        // 2) Instantiate HttpBrowser
+        // Instantiate HttpBrowser
         $browser = new HttpBrowser($httpClient);
 
-        // 3) Make the request to the target website
-        $crawler = $browser->request('GET', 'https://www.esmadrid.com/calendario-eventos-madrid');
-        // 4) Extract event details
-        $events = $crawler->filter('.card-event')->each(function (Crawler $node) {
+        // Make the request 
+        $crawler = $browser->request('GET', 'https://www.esmadrid.com/agenda-eventos-madrid');
+
+        $events = $crawler->filter('div.field-item')->each(function (Crawler $node) {
+            $title = $node->filter('h2')->count() ? trim($node->filter('h2')->text()) : null;
+
+            // Handle multiple <p> tags and decode if JSON-like
+            $descriptionParagraphs = $node->filter('p')->each(function (Crawler $pNode) {
+                $text = trim($pNode->text());
+                if ($decoded = json_decode($text, true)) {
+                    return is_array($decoded) ? implode(" ", $decoded) : $decoded;
+                }
+                return $text;
+            });
+
+            // format for Remove empty/nulls and join paragraphs into one
+            $description = implode("\n", array_filter($descriptionParagraphs));
+
             return [
-                'title'       => trim($node->filter('.card-title')->text()),
-                'date'        => $node->filter('.date')->count() ? date('Y-m-d', strtotime($node->filter('.date')->text())) : null,
-                'description' => $node->filter('.card-text')->count() ? trim($node->filter('.card-text')->text()) : null,
-                'image_url'   => $node->filter('img')->count() ? $node->filter('img')->attr('src') : null,
+                'title'       => $title,
+                'description' => $description ?: null,
+                'image_url' => $node->filter('img')->count() ? 
+                ($node->filter('img')->attr('data-src') ?? $node->filter('img')->attr('src')) 
+                : null,
                 'link'        => $node->filter('a')->count() ? $node->filter('a')->attr('href') : null,
+                'date'        => null,
             ];
         });
 
-        // 5) Save events to the database
         foreach ($events as $event) {
+            if (empty($event['title']) || empty($event['description'])) {
+                continue;
+            }
+
             Event::updateOrCreate(
-                ['title' => $event['title']], // Unique identifier
-                $event // Data to update or insert
+                ['title' => $event['title']],
+                $event
             );
         }
 
