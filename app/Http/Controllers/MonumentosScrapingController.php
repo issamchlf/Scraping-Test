@@ -7,7 +7,7 @@ use Symfony\Component\BrowserKit\HttpBrowser;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\DomCrawler\Crawler;
 
-class ScrapingController extends Controller
+class MonumentosScrapingController extends Controller
 {
     public function scrape()
     {
@@ -21,16 +21,18 @@ class ScrapingController extends Controller
         ]);
 
         $browser = new HttpBrowser($httpClient);
-        $browser->request('GET', 'https://visita.malaga.eu/es/que-ver-y-hacer/visitas/museos-malaga');
+        $browser->request('GET', 'https://visita.malaga.eu/es/que-ver-y-hacer/visitas/monumentos-historicos/monumentos');
 
         $html = $browser->getResponse()->getContent();
         $htmlUtf8 = mb_convert_encoding($html, 'UTF-8', 'HTML-ENTITIES');
         $crawler = new Crawler($htmlUtf8);
 
-        $museos = $crawler->filter('div.cajaSlide')->each(function (Crawler $node) use ($browser) {
-            $title = $node->filter('h3')->text('');
-            $description = $node->filter('a')->text('');
-            $image = $node->filter('img')->attr('src');
+        $monumentos = $crawler->filter('article.four.columns')->each(function (Crawler $node) use ($browser) {
+            $title = $node->filter('h1')->text('');
+            $description = $node->filter('p')->text('');
+            $image = $node->filter('img')->count() ? 
+            ($node->filter('img')->attr('data-src') ?? $node->filter('img')->attr('src')) 
+            : null;
             $link = $node->filter('a')->attr('href');
 
             // Inicializar coordenadas
@@ -64,6 +66,6 @@ class ScrapingController extends Controller
             ];
         });
 
-        return view('scrape', ['museos' => $museos]);
+        return view('scrape-monumentos', ['monumentos' => $monumentos]);
     }
 }
